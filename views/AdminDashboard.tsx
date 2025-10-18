@@ -37,6 +37,10 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onLogout, users, 
       addToast('Username is already taken, please try another.', 'error');
       return false;
     }
+    if (users.some(u => u.id.toLowerCase() === newUser.id.toLowerCase())) {
+        addToast('UserID is already taken, please try another.', 'error');
+        return false;
+    }
     const userWithOrg = { ...newUser, organization: user.organization };
     setUsers(prev => [userWithOrg, ...prev]);
     addToast('User added successfully!', 'success');

@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { GoogleGenAI, Type } from "@google/genai";
@@ -106,13 +107,39 @@ interface FileManagementProps {
   addActivityLog: (username: string, actionType: ActivityType) => void;
 }
 
-const evaluateABEPolicy = (userAttributes: string[] = [], policy: string = ''): boolean => {
-    if (!policy) return false;
-    const requiredAttributes = policy.split(',').map(s => s.trim()).filter(Boolean);
-    if (requiredAttributes.length === 0) return false;
+const evaluateABEPolicy = (userAttributes: string[] = [], file: FileItem): boolean => {
+    const policy = file.accessPolicy || '';
+    const policyMode = file.accessPolicyMode || 'AND';
+
+    if (!policy.trim()) {
+        return false;
+    }
+
+    // Policy is now just values: "s1, ds, hod"
+    const requiredValues = policy.split(',')
+                                 .map(val => val.trim().toLowerCase())
+                                 .filter(val => val.length > 0);
+
+    if (requiredValues.length === 0) {
+        return false;
+    }
+
+    // User attributes are "key:value": ["userID:s1", "department:ds"]
+    // Extract just the values and normalize them.
+    const userValues = userAttributes.map(attr => {
+        const parts = attr.split(':');
+        return parts.length > 1 ? parts[1].trim().toLowerCase() : '';
+    }).filter(Boolean); // Filter out empty strings
     
-    const userAttrsSet = new Set(userAttributes);
-    return requiredAttributes.every(reqAttr => userAttrsSet.has(reqAttr));
+    const userValuesSet = new Set(userValues);
+
+    if (policyMode === 'OR') {
+        // Flexible: User must have at least ONE of the required attribute values
+        return requiredValues.some(requiredVal => userValuesSet.has(requiredVal));
+    } else { // 'AND'
+        // Strict: User must have ALL of the required attribute values
+        return requiredValues.every(requiredVal => userValuesSet.has(requiredVal));
+    }
 };
 
 
@@ -124,6 +151,7 @@ const FileManagement: React.FC<FileManagementProps> = ({ user, allUsers, files, 
   const [usersToShareWith, setUsersToShareWith] = useState<string[]>([]);
   const [shareMode, setShareMode] = useState<'users' | 'attributes'>('users');
   const [abePolicy, setAbePolicy] = useState('');
+  const [abePolicyMode, setAbePolicyMode] = useState<'AND' | 'OR'>('AND');
   
   const [isAnalysisModalOpen, setIsAnalysisModalOpen] = useState(false);
   const [fileToAnalyze, setFileToAnalyze] = useState<FileItem | null>(null);
@@ -144,7 +172,7 @@ const FileManagement: React.FC<FileManagementProps> = ({ user, allUsers, files, 
 
   const myFiles = files.filter(f => f.uploaderId === user.id);
   const sharedByMeFiles = files.filter(f => f.uploaderId === user.id && (f.sharedWith?.length || f.encryptionType === 'abe'));
-  const receivedFiles = files.filter(f => f.sharedWith?.includes(user.id) || (f.encryptionType === 'abe' && evaluateABEPolicy(user.attributes, f.accessPolicy)));
+  const receivedFiles = files.filter(f => f.sharedWith?.includes(user.id) || (f.encryptionType === 'abe' && evaluateABEPolicy(user.attributes, f)));
   const downloadedFiles = files.filter(f => f.downloadedBy?.includes(user.id));
 
   const allTabs = [
@@ -205,6 +233,7 @@ const FileManagement: React.FC<FileManagementProps> = ({ user, allUsers, files, 
     setUsersToShareWith([]); // Reset selection
     setShareMode('users');
     setAbePolicy('');
+    setAbePolicyMode('AND');
     setIsShareModalOpen(true);
   };
 
@@ -293,7 +322,7 @@ const FileManagement: React.FC<FileManagementProps> = ({ user, allUsers, files, 
   const handleOpenFileView = (file: FileItem) => {
     if (file.isEncrypted) {
       if (file.encryptionType === 'abe') {
-        if (evaluateABEPolicy(user.attributes, file.accessPolicy)) {
+        if (evaluateABEPolicy(user.attributes, file)) {
           addToast('ABE policy satisfied. Access granted.', 'success');
           openFileInNewTab(file);
         } else {
@@ -345,6 +374,7 @@ const FileManagement: React.FC<FileManagementProps> = ({ user, allUsers, files, 
             isEncrypted: true,
             encryptionType: 'abe' as const,
             accessPolicy: abePolicy,
+            accessPolicyMode: abePolicyMode,
             sharedWith: [], // ABE doesn't use direct user sharing list
             decryptionKey: undefined, // No single key
         };
@@ -424,7 +454,7 @@ const FileManagement: React.FC<FileManagementProps> = ({ user, allUsers, files, 
   
   const handleDownloadFile = (file: FileItem) => {
     if (file.isEncrypted && file.encryptionType === 'abe') {
-        if (!evaluateABEPolicy(user.attributes, file.accessPolicy)) {
+        if (!evaluateABEPolicy(user.attributes, file)) {
             addToast("Access Denied. Your attributes do not match the policy to download.", 'error');
             return;
         }
@@ -573,17 +603,47 @@ const FileManagement: React.FC<FileManagementProps> = ({ user, allUsers, files, 
                  </p>
                 </div>
              ) : (
-                <div>
+                <div className="space-y-4">
                   <Input
-                    label="Required Attributes (comma-separated)"
+                    label="Access Policy (comma-separated values)"
                     id="abe-policy"
-                    placeholder="e.g. department:research,clearance:2"
+                    placeholder="e.g., s1, ds, hod"
                     value={abePolicy}
                     onChange={(e) => setAbePolicy(e.target.value)}
                     autoFocus
                   />
-                  <p className="text-sm text-purple-300/80 bg-purple-500/10 p-3 rounded-lg mt-4">
-                    Encrypts the file and grants access only to users who have ALL specified attributes. No manual key sharing needed.
+                   <div>
+                    <label className="block text-sm font-medium text-slate-300 mb-2">Policy Logic</label>
+                    <div className="flex items-center space-x-2 bg-slate-900/50 border border-slate-700 rounded-lg p-1">
+                        <label htmlFor="policy-and" className={`flex items-center cursor-pointer p-2 rounded-md flex-1 justify-center transition-colors ${abePolicyMode === 'AND' ? 'bg-indigo-600' : 'hover:bg-slate-800/50'}`}>
+                            <input 
+                                id="policy-and" 
+                                name="policy-logic" 
+                                type="radio" 
+                                checked={abePolicyMode === 'AND'} 
+                                onChange={() => setAbePolicyMode('AND')}
+                                className="sr-only"
+                            />
+                            <span className="text-sm font-medium text-slate-200">Strict (AND)</span>
+                        </label>
+                         <label htmlFor="policy-or" className={`flex items-center cursor-pointer p-2 rounded-md flex-1 justify-center transition-colors ${abePolicyMode === 'OR' ? 'bg-indigo-600' : 'hover:bg-slate-800/50'}`}>
+                            <input 
+                                id="policy-or" 
+                                name="policy-logic" 
+                                type="radio" 
+                                checked={abePolicyMode === 'OR'} 
+                                onChange={() => setAbePolicyMode('OR')}
+                                className="sr-only"
+                            />
+                            <span className="text-sm font-medium text-slate-200">Flexible (OR)</span>
+                        </label>
+                    </div>
+                  </div>
+                  <p className="text-sm text-purple-300/80 bg-purple-500/10 p-3 rounded-lg">
+                     {abePolicyMode === 'AND'
+                      ? "User must have ALL values. e.g., 's1, ds, hod' requires the user to have all three values in their profile."
+                      : "User must have AT LEAST ONE value. e.g., 'legal, auditor' grants access to anyone in legal OR any auditor."
+                    }
                   </p>
                 </div>
              )}

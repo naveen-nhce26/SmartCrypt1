@@ -13,27 +13,52 @@ interface AddUserPanelProps {
 }
 
 const AddUserPanel: React.FC<AddUserPanelProps> = ({ isOpen, onClose, onAddUser }) => {
-  const [newUser, setNewUser] = useState({ username: '', password: '', role: UserRole.LEVEL1, roleName: '', attributes: '' });
+  const [newUser, setNewUser] = useState({
+    username: '',
+    password: '',
+    role: UserRole.LEVEL1,
+    roleName: '',
+    department: '',
+    userID: '',
+  });
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
     setMounted(true);
     if (isOpen) {
-      setNewUser({ username: '', password: '', role: UserRole.LEVEL1, roleName: '', attributes: '' });
+      setNewUser({
+        username: '',
+        password: '',
+        role: UserRole.LEVEL1,
+        roleName: '',
+        department: '',
+        userID: '',
+      });
     }
   }, [isOpen]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+
+    const formatAttr = (value: string) => value.trim().replace(/\s+/g, '-').toLowerCase();
+
+    const attributes = [];
+    if (newUser.role) attributes.push(`level:${formatAttr(newUser.role)}`);
+    if (newUser.department) attributes.push(`department:${formatAttr(newUser.department)}`);
+    if (newUser.roleName) attributes.push(`roleName:${formatAttr(newUser.roleName)}`);
+    if (newUser.userID) attributes.push(`userID:${formatAttr(newUser.userID)}`);
+    
     const userToAdd: User = {
-      id: Date.now().toString(),
+      id: newUser.userID.trim(),
       username: newUser.username,
       password: newUser.password,
       role: newUser.role,
       roleName: newUser.roleName || newUser.role,
       status: UserStatus.ACTIVE,
-      attributes: newUser.attributes.split(',').map(attr => attr.trim()).filter(Boolean),
+      attributes: attributes,
+      department: newUser.department.trim(),
     };
+    
     const success = onAddUser(userToAdd);
     if (success) {
       onClose();
@@ -79,6 +104,14 @@ const AddUserPanel: React.FC<AddUserPanelProps> = ({ isOpen, onClose, onAddUser 
                 autoFocus
               />
               <Input
+                id="userID"
+                label="UserID"
+                placeholder="e.g., U12345"
+                value={newUser.userID}
+                onChange={(e) => setNewUser({ ...newUser, userID: e.target.value })}
+                required
+              />
+              <Input
                 id="password"
                 type="password"
                 label="Password"
@@ -89,7 +122,7 @@ const AddUserPanel: React.FC<AddUserPanelProps> = ({ isOpen, onClose, onAddUser 
               />
               <div>
                 <label htmlFor="role" className="block text-sm font-medium text-slate-300 mb-1">
-                  User Role
+                  User Level
                 </label>
                 <select
                   id="role"
@@ -107,18 +140,18 @@ const AddUserPanel: React.FC<AddUserPanelProps> = ({ isOpen, onClose, onAddUser 
                 </select>
               </div>
               <Input
+                id="department"
+                label="Department"
+                placeholder="e.g., Research, Security"
+                value={newUser.department}
+                onChange={(e) => setNewUser({ ...newUser, department: e.target.value })}
+              />
+              <Input
                 id="roleName"
                 label="Custom Role Name (Optional)"
                 placeholder="e.g., Doctor, Researcher"
                 value={newUser.roleName}
                 onChange={(e) => setNewUser({ ...newUser, roleName: e.target.value })}
-              />
-              <Input
-                id="attributes"
-                label="Attributes (comma-separated)"
-                placeholder="e.g., department:research,level:2"
-                value={newUser.attributes}
-                onChange={(e) => setNewUser({ ...newUser, attributes: e.target.value })}
               />
               <div className="pt-4">
                 <Button type="submit" className="w-full">

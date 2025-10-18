@@ -1,3 +1,4 @@
+
 export enum UserRole {
   ADMIN = 'Admin',
   LEVEL1 = 'Level 1',
@@ -21,6 +22,7 @@ export interface User {
   status: UserStatus;
   organization?: string;
   attributes?: string[];
+  department?: string;
 }
 
 export interface FileItem {
@@ -37,12 +39,14 @@ export interface FileItem {
   mimeType?: string;
   encryptionType?: 'standard' | 'abe';
   accessPolicy?: string;
+  accessPolicyMode?: 'AND' | 'OR';
 }
 
 export enum ActivityType {
     UPLOAD = 'Upload',
     SHARE = 'Share',
     LOGIN = 'Login',
+    HELP_REQUEST = 'Help Request',
 }
 
 export interface ActivityLog {

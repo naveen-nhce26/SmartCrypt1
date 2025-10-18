@@ -1,11 +1,13 @@
-import React from 'react';
-import { LogOut, UserCircle, File, Share2, Download, ShieldCheck } from 'lucide-react';
+
+import React, { useState } from 'react';
+import { LogOut, UserCircle, File, Share2, Download, ShieldCheck, LifeBuoy } from 'lucide-react';
 import { motion } from 'framer-motion';
 import FileManagement from '../components/admin/FileManagement';
 import Button from '../components/ui/Button';
 import { User, FileItem, Notification, ActivityType } from '../types';
 import NotificationBell from '../components/ui/NotificationBell';
 import StatCard from '../components/ui/StatCard';
+import HelpDeskModal from '../components/ui/HelpDeskModal';
 
 interface UserDashboardProps {
   user: User;
@@ -19,11 +21,59 @@ interface UserDashboardProps {
   addActivityLog: (username: string, actionType: ActivityType) => void;
 }
 
+// ABE policy evaluation logic, must be consistent with FileManagement
+const evaluateABEPolicy = (userAttributes: string[] = [], file: FileItem): boolean => {
+    const policy = file.accessPolicy || '';
+    const policyMode = file.accessPolicyMode || 'AND';
+
+    if (!policy.trim()) {
+        return false;
+    }
+
+    // Policy is now just values: "s1, ds, hod"
+    const requiredValues = policy.split(',')
+                                 .map(val => val.trim().toLowerCase())
+                                 .filter(val => val.length > 0);
+
+    if (requiredValues.length === 0) {
+        return false;
+    }
+
+    // User attributes are "key:value": ["userID:s1", "department:ds"]
+    // Extract just the values and normalize them.
+    const userValues = userAttributes.map(attr => {
+        const parts = attr.split(':');
+        return parts.length > 1 ? parts[1].trim().toLowerCase() : '';
+    }).filter(Boolean); // Filter out empty strings
+    
+    const userValuesSet = new Set(userValues);
+
+    if (policyMode === 'OR') {
+        // Flexible: User must have at least ONE of the required attribute values
+        return requiredValues.some(requiredVal => userValuesSet.has(requiredVal));
+    } else { // 'AND'
+        // Strict: User must have ALL of the required attribute values
+        return requiredValues.every(requiredVal => userValuesSet.has(requiredVal));
+    }
+};
+
 const UserDashboard: React.FC<UserDashboardProps> = ({ user, onLogout, allUsers, files, setFiles, notifications, setNotifications, addNotification, addActivityLog }) => {
+  const [isHelpModalOpen, setIsHelpModalOpen] = useState(false);
   const myFilesCount = files.filter(f => f.uploaderId === user.id).length;
   const encryptedFilesCount = files.filter(f => f.uploaderId === user.id && f.isEncrypted).length;
-  const receivedFilesCount = files.filter(f => f.sharedWith?.includes(user.id)).length;
+  
+  const receivedFilesCount = files.filter(f => 
+    f.sharedWith?.includes(user.id) || (f.encryptionType === 'abe' && evaluateABEPolicy(user.attributes, f))
+  ).length;
+  
   const downloadedFilesCount = files.filter(f => f.downloadedBy?.includes(user.id)).length;
+    
+  const handleSendHelpRequest = async (userMessage: string, aiResponse: string) => {
+    // This message will be sent to all admins
+    const notificationMessage = `Help Request from ${user.username}: "${userMessage.substring(0, 50)}..."`;
+    addNotification('admins', notificationMessage);
+    addActivityLog(user.username, ActivityType.HELP_REQUEST);
+  };
     
   return (
     <div className="min-h-screen bg-transparent text-white flex flex-col">
@@ -64,6 +114,22 @@ const UserDashboard: React.FC<UserDashboardProps> = ({ user, onLogout, allUsers,
           <FileManagement user={user} allUsers={allUsers} files={files} setFiles={setFiles} addNotification={addNotification} addActivityLog={addActivityLog} />
         </motion.div>
       </main>
+      
+      <motion.button
+        whileHover={{ scale: 1.1 }}
+        whileTap={{ scale: 0.95 }}
+        onClick={() => setIsHelpModalOpen(true)}
+        className="fixed bottom-6 right-6 sm:bottom-8 sm:right-8 bg-gradient-to-r from-indigo-500 to-indigo-600 text-white rounded-full p-4 shadow-lg shadow-indigo-500/30 z-50 flex items-center justify-center"
+        aria-label="Open Help Desk"
+      >
+        <LifeBuoy className="h-6 w-6" />
+      </motion.button>
+
+      <HelpDeskModal
+        isOpen={isHelpModalOpen}
+        onClose={() => setIsHelpModalOpen(false)}
+        onSendRequest={handleSendHelpRequest}
+      />
     </div>
   );
 };

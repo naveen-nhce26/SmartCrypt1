@@ -15,14 +15,26 @@ const App: React.FC = () => {
   const [activityLogs, setActivityLogs] = useState<ActivityLog[]>([]);
 
   const addNotification = (userId: string, message: string) => {
-    const newNotification: Notification = {
-      id: `notif-${Date.now()}`,
-      userId,
-      message,
-      timestamp: new Date().toISOString(),
-      read: false,
-    };
-    setNotifications(prev => [newNotification, ...prev]);
+    if (userId === 'admins') {
+      const adminUsers = users.filter(u => u.role === UserRole.ADMIN);
+      const newNotifications: Notification[] = adminUsers.map(admin => ({
+        id: `notif-${Date.now()}-${admin.id}`,
+        userId: admin.id,
+        message,
+        timestamp: new Date().toISOString(),
+        read: false,
+      }));
+      setNotifications(prev => [...newNotifications, ...prev]);
+    } else {
+      const newNotification: Notification = {
+        id: `notif-${Date.now()}`,
+        userId,
+        message,
+        timestamp: new Date().toISOString(),
+        read: false,
+      };
+      setNotifications(prev => [newNotification, ...prev]);
+    }
   };
   
   const addActivityLog = (username: string, actionType: ActivityType) => {

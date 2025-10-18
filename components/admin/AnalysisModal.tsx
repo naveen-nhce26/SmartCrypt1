@@ -93,7 +93,7 @@ const AnalysisModal: React.FC<AnalysisModalProps> = ({ isOpen, onClose, isLoadin
         onClose={onClose} 
         onExitComplete={onExitComplete}
         title={`Threat Analysis: ${filename}`} 
-        className="max-w-2xl" 
+        className="max-w-xl" 
         backgroundClassName="bg-slate-900 border border-slate-700"
     >
         <div className="flex flex-col h-full">
@@ -115,7 +115,7 @@ const AnalysisModal: React.FC<AnalysisModalProps> = ({ isOpen, onClose, isLoadin
           )}
           {!isLoading && result && (
             <>
-              <div className="flex-grow overflow-y-auto custom-scrollbar pr-4 -mr-6">
+              <div className="flex-grow overflow-y-auto custom-scrollbar pr-4 -mr-6 max-h-[50vh]">
                 <div className="space-y-6">
                   <div className="flex flex-col items-center justify-center space-y-4 text-center border-b border-slate-700/50 pb-6">
                       <ThreatMeter level={result.threatLevel} />
@@ -160,7 +160,7 @@ const AnalysisModal: React.FC<AnalysisModalProps> = ({ isOpen, onClose, isLoadin
                     {isHighRisk ? 'High risk detected. Encryption is strongly recommended.' : 'Low risk detected. You can encrypt for extra security.'}
                 </p>
                 <Button variant="secondary" onClick={onClose} className="w-auto">
-                    Close
+                    Dismiss
                 </Button>
                 <Button
                     onClick={handleSecure}
@@ -168,7 +168,7 @@ const AnalysisModal: React.FC<AnalysisModalProps> = ({ isOpen, onClose, isLoadin
                     className="w-auto"
                 >
                     <Lock className="h-4 w-4 mr-2" />
-                    Encrypt & Share
+                    Secure File
                 </Button>
               </div>
             </>
