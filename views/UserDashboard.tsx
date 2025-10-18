@@ -1,13 +1,12 @@
 
 import React, { useState } from 'react';
-import { LogOut, UserCircle, File, Share2, Download, ShieldCheck, LifeBuoy } from 'lucide-react';
+import { LogOut, UserCircle, File, Share2, Download, ShieldCheck } from 'lucide-react';
 import { motion } from 'framer-motion';
 import FileManagement from '../components/admin/FileManagement';
 import Button from '../components/ui/Button';
 import { User, FileItem, Notification, ActivityType } from '../types';
 import NotificationBell from '../components/ui/NotificationBell';
 import StatCard from '../components/ui/StatCard';
-import HelpDeskModal from '../components/ui/HelpDeskModal';
 
 interface UserDashboardProps {
   user: User;
@@ -58,7 +57,6 @@ const evaluateABEPolicy = (userAttributes: string[] = [], file: FileItem): boole
 };
 
 const UserDashboard: React.FC<UserDashboardProps> = ({ user, onLogout, allUsers, files, setFiles, notifications, setNotifications, addNotification, addActivityLog }) => {
-  const [isHelpModalOpen, setIsHelpModalOpen] = useState(false);
   const myFilesCount = files.filter(f => f.uploaderId === user.id).length;
   const encryptedFilesCount = files.filter(f => f.uploaderId === user.id && f.isEncrypted).length;
   
@@ -67,13 +65,6 @@ const UserDashboard: React.FC<UserDashboardProps> = ({ user, onLogout, allUsers,
   ).length;
   
   const downloadedFilesCount = files.filter(f => f.downloadedBy?.includes(user.id)).length;
-    
-  const handleSendHelpRequest = async (userMessage: string, aiResponse: string) => {
-    // This message will be sent to all admins
-    const notificationMessage = `Help Request from ${user.username}: "${userMessage.substring(0, 50)}..."`;
-    addNotification('admins', notificationMessage);
-    addActivityLog(user.username, ActivityType.HELP_REQUEST);
-  };
     
   return (
     <div className="min-h-screen bg-transparent text-white flex flex-col">
@@ -115,21 +106,6 @@ const UserDashboard: React.FC<UserDashboardProps> = ({ user, onLogout, allUsers,
         </motion.div>
       </main>
       
-      <motion.button
-        whileHover={{ scale: 1.1 }}
-        whileTap={{ scale: 0.95 }}
-        onClick={() => setIsHelpModalOpen(true)}
-        className="fixed bottom-6 right-6 sm:bottom-8 sm:right-8 bg-gradient-to-r from-indigo-500 to-indigo-600 text-white rounded-full p-4 shadow-lg shadow-indigo-500/30 z-50 flex items-center justify-center"
-        aria-label="Open Help Desk"
-      >
-        <LifeBuoy className="h-6 w-6" />
-      </motion.button>
-
-      <HelpDeskModal
-        isOpen={isHelpModalOpen}
-        onClose={() => setIsHelpModalOpen(false)}
-        onSendRequest={handleSendHelpRequest}
-      />
     </div>
   );
 };

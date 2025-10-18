@@ -46,7 +46,6 @@ export enum ActivityType {
     UPLOAD = 'Upload',
     SHARE = 'Share',
     LOGIN = 'Login',
-    HELP_REQUEST = 'Help Request',
 }
 
 export interface ActivityLog {

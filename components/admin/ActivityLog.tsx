@@ -2,7 +2,7 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { ActivityLog, ActivityType } from '../../types';
-import { Upload, Share2, LogIn, LifeBuoy } from 'lucide-react';
+import { Upload, Share2, LogIn } from 'lucide-react';
 import Card from '../ui/Card';
 
 const ActivityIcon: React.FC<{type: ActivityType}> = ({type}) => {
@@ -10,13 +10,11 @@ const ActivityIcon: React.FC<{type: ActivityType}> = ({type}) => {
         [ActivityType.UPLOAD]: <Upload className="h-5 w-5 text-blue-400"/>,
         [ActivityType.SHARE]: <Share2 className="h-5 w-5 text-purple-400"/>,
         [ActivityType.LOGIN]: <LogIn className="h-5 w-5 text-green-400"/>,
-        [ActivityType.HELP_REQUEST]: <LifeBuoy className="h-5 w-5 text-yellow-400"/>,
     };
     const colorMap = {
         [ActivityType.UPLOAD]: "bg-blue-500/10",
         [ActivityType.SHARE]: "bg-purple-500/10",
         [ActivityType.LOGIN]: "bg-green-500/10",
-        [ActivityType.HELP_REQUEST]: "bg-yellow-500/10",
     }
     return <div className={`relative z-10 flex h-10 w-10 items-center justify-center rounded-full ring-4 ring-slate-800/60 ${colorMap[type]}`}>{iconMap[type]}</div>;
 }
